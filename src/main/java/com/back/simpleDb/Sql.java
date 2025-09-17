@@ -46,91 +46,62 @@ public class Sql {
         return this;
     }
 
-    /**
-     * INSERT 실행 후 AUTO_INCREMENT 키 반환
-     */
-    public long insert() {
-        String sql = rawSql.toString();
-
+    public void logSql() {
         if (simpleDb.isDevMode()) {
-            System.out.println("[SQL]\n" + sql);
-            System.out.println("[PARAMS]\n" + params);
+            System.out.println("[SQL]\n" + rawSql);
+            if(!params.isEmpty())
+                System.out.println("[PARAMS]\n" + params);
         }
+    }
+
+    public int executeUpdate(boolean returnId) {
+        String sql = rawSql.toString();
+        logSql();
 
         try (
                 PreparedStatement pstmt = simpleDb
                         .getConnection()
-                        .prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)
+                        .prepareStatement(sql, returnId ? Statement.RETURN_GENERATED_KEYS : Statement.NO_GENERATED_KEYS)
         ) {
             for (int i = 0; i < params.size(); i++) {
                 pstmt.setObject(i + 1, params.get(i));
             }
 
-            pstmt.executeUpdate();
+            int result = pstmt.executeUpdate();
 
-            try (ResultSet rs = pstmt.getGeneratedKeys()) {
-                if (rs.next()) {
-                    return rs.getLong(1);
+            if(returnId) {
+                try (ResultSet rs = pstmt.getGeneratedKeys()) {
+                    if (rs.next()) {
+                        return rs.getInt(1);
+                    }
                 }
             }
+            return result;
+
         } catch (SQLException e) {
-            e.printStackTrace();
+            throw new RuntimeException(e);
         }
-        return -1;
+    }
+
+    /**
+     * INSERT 실행 후 AUTO_INCREMENT 키 반환
+     */
+    public long insert() {
+        return executeUpdate(true);
     }
 
     /**
      * Update 실행 후 변경된 raw 갯수 반환
      */
     public int update() {
-        String sql = rawSql.toString();
-
-        if (simpleDb.isDevMode()) {
-            System.out.println("[SQL]\n" + sql);
-            System.out.println("[PARAMS]\n" + params);
-        }
-
-        try (
-                PreparedStatement pstmt = simpleDb
-                        .getConnection()
-                        .prepareStatement(sql)
-        ) {
-            for (int i = 0; i < params.size(); i++) {
-                pstmt.setObject(i + 1, params.get(i));
-            }
-
-            return pstmt.executeUpdate();
-        } catch (SQLException e) {
-            e.printStackTrace();
-            return 0;
-        }
+        return executeUpdate(false);
     }
 
     /**
      * delete 실행 후 삭제된 raw 갯수 반환
      */
     public int delete() {
-        String sql = rawSql.toString();
-
-        if (simpleDb.isDevMode()) {
-            System.out.println("[SQL]\n" + sql);
-            System.out.println("[PARAMS]\n" + params);
-        }
-
-        try (
-                PreparedStatement pstmt = simpleDb
-                        .getConnection()
-                        .prepareStatement(sql)
-        ) {
-            for (int i = 0; i < params.size(); i++) {
-                pstmt.setObject(i + 1, params.get(i));
-            }
-
-            return pstmt.executeUpdate();
-        } catch (SQLException e) {
-            e.printStackTrace();
-            return 0;
-        }
+        return executeUpdate(false);
     }
 
     /**
@@ -140,9 +111,7 @@ public class Sql {
         String sql = rawSql.toString();
         List<Map<String, Object>> result = new ArrayList<>();
 
-        if (simpleDb.isDevMode()) {
-            System.out.println("[SQL]\n" + sql);
-        }
+        logSql();
 
         try (
                 PreparedStatement pstmt = simpleDb
@@ -208,9 +177,7 @@ public class Sql {
         String sql = rawSql.toString();
         LocalDateTime result = LocalDateTime.now();
 
-        if (simpleDb.isDevMode()) {
-            System.out.println("[SQL]\n" + sql);
-        }
+        logSql();
 
         try (
                 PreparedStatement pstmt = simpleDb
@@ -234,10 +201,7 @@ public class Sql {
     public Long selectLong() {
         String sql = rawSql.toString();
 
-        if (simpleDb.isDevMode()) {
-            System.out.println("[SQL]\n" + sql);
-            System.out.println("[PARAMS]\n" + params);
-        }
+        logSql();
 
         try (
                 PreparedStatement pstmt = simpleDb
@@ -270,9 +234,7 @@ public class Sql {
         String sql = rawSql.toString();
         String result = "";
 
-        if (simpleDb.isDevMode()) {
-            System.out.println("[SQL]\n" + sql);
-        }
+        logSql();
 
         try (
                 PreparedStatement pstmt = simpleDb
@@ -296,9 +258,7 @@ public class Sql {
     public Boolean selectBoolean() {
         String sql = rawSql.toString();
 
-        if (simpleDb.isDevMode()) {
-            System.out.println("[SQL]\n" + sql);
-        }
+        logSql();
 
         try (
                 PreparedStatement pstmt = simpleDb
@@ -323,9 +283,7 @@ public class Sql {
     public List<Long> selectLongs() {
         String sql = rawSql.toString();
 
-        if (simpleDb.isDevMode()) {
-            System.out.println("[SQL]\n" + sql);
-        }
+        logSql();
 
         try (
                 PreparedStatement pstmt = simpleDb
@@ -354,9 +312,7 @@ public class Sql {
         String sql = rawSql.toString();
         List<Article> result = new ArrayList<>();
 
-        if (simpleDb.isDevMode()) {
-            System.out.println("[SQL]\n" + sql);
-        }
+        logSql();
 
         try (
                 PreparedStatement pstmt = simpleDb
@@ -388,9 +344,8 @@ public class Sql {
      */
     public <T> T selectRow(Class<T> clazz) {
         String sql = rawSql.toString();
-        if (simpleDb.isDevMode()) {
-            System.out.println("[SQL]\n" + sql);
-        }
+        logSql();
+
         try (
                 PreparedStatement pstmt = simpleDb.getConnection().prepareStatement(sql)
         ) {
